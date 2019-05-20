@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2016 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+<!DOCTYPE hibernate-mapping SYSTEM "classpath://hibernate-mapping-3.0.dtd">
+<!-- Generated Jan 26, 2012 11:33:07 AM by Hibernate Tools 3.2.4.GA -->
+<hibernate-mapping default-cascade="save-update" auto-import="false">
+    <class name="com.ibaset.solumina.sfbis.domain.Failover" table="SFBIS_FAILOVER" schema="SFMFG">
+        <id name="transactionId" type="string">
+            <column name="TRANSACTION_ID" length="40" />
+            <generator class="assigned" />
+        </id>
+        <many-to-one name="serviceDef" class="com.ibaset.solumina.sfbis.domain.ServiceDef" fetch="select">
+            <column name="SERVICE_NAME" length="25" not-null="true" />
+        </many-to-one>
+        <property name="externalEntity" type="string">
+            <column name="EXTERNAL_ENTITY" length="25" not-null="true" />
+        </property>
+        <property name="transactionStatus" type="string">
+            <column name="TRANSACTION_STATUS" length="20" not-null="true" />
+        </property>
+        <property name="messageId" type="string">
+            <column name="MESSAGE_ID" length="40" />
+        </property>
+        <property name="messageDate" type="timestamp">
+            <column name="MESSAGE_DATE" length="7" />
+        </property>
+        <property name="messageText" type="clob">
+            <column name="MESSAGE_TEXT" />
+        </property>
+        <property name="errorText" type="clob">
+            <column name="ERROR_TEXT" />
+        </property>
+        <property name="updtUserid" type="string">
+            <column name="UPDT_USERID" length="30" not-null="true" />
+        </property>
+        <property name="timeStamp" type="timestamp">
+            <column name="TIME_STAMP" length="7" not-null="true" />
+        </property>
+        <property name="lastAction" type="string">
+            <column name="LAST_ACTION" length="20" not-null="true" />
+        </property>
+        <property name="ref1" type="string">
+            <column name="REF1" length="50" />
+        </property>
+        <property name="ref2" type="string">
+            <column name="REF2" length="50" />
+        </property>
+        <property name="ref3" type="string">
+            <column name="REF3" length="50" />
+        </property>
+        <property name="ref4" type="string">
+            <column name="REF4" length="50" />
+        </property>
+        <property name="ref5" type="string">
+            <column name="REF5" length="50" />
+        </property>
+    </class>
+</hibernate-mapping>

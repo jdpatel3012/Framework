@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2010 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+ <beans xmlns="http://www.springframework.org/schema/beans"
+ 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd"
+ 	default-lazy-init="true" default-dependency-check="none"
+ 	default-autowire="no">
+ 	
+	<import resource="microsoftSQLServerMIContext.xml"/>
+	<import resource="microsoftSQLServerScaffoldContext.xml"/>
+
+	<bean id="jdbcDaoImpl"
+        class="com.ibaset.common.security.context.SoluminaJdbcDaoImpl"  init-method="initMappingSqlQueries">
+        <property name="rolePrefix">
+            <value></value>
+        </property>
+        <property name="usersByUsernameQuery">
+            <value>
+                SELECT U.USERID AS USERNAME, U.PASSWORD AS PASSWORD,
+                       1 AS ENABLED, 
+                       CASE WHEN U.ACCOUNT_STATUS = 'OPEN' AND
+                                 G.PARAMETER_VALUE > COALESCE(SU.USER_LOGIN_ATTEMPT, 0)  
+                            THEN 1 ELSE 0 END AS ACCOUNTNONLOCKED
+                 FROM SFCORE_USER U LEFT OUTER JOIN SFFND_USER SU ON SU.USERID = U.USERID,
+                      (SELECT C.PARAMETER_VALUE FROM SFFND_GLOBAL_CONFIGURATION C
+                        WHERE C.CONFIG_MODULE_NAME = 'FOUNDATION'
+                          AND C.PARAMETER_NAME = 'USER_LOGIN_FAILED_LIMIT') G
+                WHERE U.USERID = ?
+            </value>
+        </property>
+        <property name="authoritiesByUsernameQuery">
+            <value>
+					SELECT A.USERID, A.PRIV FROM SFCORE_USER_PRIVS A 
+					WHERE A.USERID = ?
+					AND  (A.USERID = 'ANONYMOUS' OR (A.USERID != 'ANONYMOUS' AND 'N' = ?))
+					UNION        
+					SELECT DISTINCT A.USERID, A.PRIV FROM SFCORE_USER_PRIVS A, SFFND_LICENSE_USERS LU cross apply SFCORE_DISPLAY_LICENSED_PRIVS(LU.LICENSE_NAME) B
+					WHERE A.USERID = ?
+					AND A.USERID = LU.USERID
+					AND A.PRIV = B.COLUMN_VALUE	
+					AND SFMFG.SFCORE_DECRYPT_STRING(LU.LICENSE_CHECK) = LU.USERID + LU.LICENSE_NAME	+ LU.%%LOCKRES%%			
+					AND A.USERID != 'ANONYMOUS' AND 'Y' = ?
+					UNION
+					SELECT DISTINCT A.USERID, PA.PRIV_ALIAS AS PRIV FROM SFCORE_USER_PRIVS A, SFCORE_APPLICATION_ACCESS_CTRL PA
+			        WHERE A.USERID = ?
+			        AND A.PRIV = PA.PRIV
+			        AND A.USERID != 'ANONYMOUS' AND 'Y' = ?
+            </value>
+        </property>
+        <property name="ldapPrivQuery">
+            <value>
+               select PRIV from SFCORE_APP_ROLE_PRIVS P, SFMFG.SFFND_PARSE_FCN(?, ',') T where P.ROLE = T.COLUMN_VALUE
+            </value>
+        </property>
+        <property name="dataSource">
+            <ref bean="dataSource" />
+        </property>
+        <property name="soluminaUserDetailsLoader"><ref bean="detailsLoader"/></property>
+    </bean>
+<!-- 
+	<bean  id="soluminaSequence"
+		   class="com.ibaset.common.dao.SqlServerGuidMaxValueIncrementer"
+		   autowire="no">
+		<property name="dataSource">
+			<ref bean="dataSource" />
+		</property>
+		<property name="incrementerName">
+			<value>SFMFG.SFDB_GUID()</value>
+		</property>
+		<property name="enableString">
+			<value>true</value>
+		</property>
+	</bean>
+
+	<bean id="multiMediaObjectDao" parent="baseDao"
+		class="com.ibaset.solumina.sfcore.dao.impl.MSSqlMultiMediaObjectDaoImpl" >
+	</bean>
+
+ 	<bean id="lobHandler"
+		class="org.springframework.jdbc.support.lob.DefaultLobHandler" />
+	
+	<bean id="databaseInformation"
+		class="com.ibaset.common.sql.DatabaseInformationHolder">
+		<property name="databaseProductName" value="microsoftSQLServer"/>
+		<property name="dualTable">
+			<value></value>
+		</property>
+		<property name="schemaPrefix">
+			<value>SFMFG.</value>
+		</property>
+		<property name="nvlString">
+			<value>ISNULL</value>
+		</property>
+		<property name="concatenationOperator">
+			<value>+</value>
+		</property>
+		<property name="instringSfwidCrossOrderGet">
+			<value>
+ /*+ Replacing: INSTRING CALL WITH(SFMFG.SFWID_CROSS_ORDER_GET(#ORDER_ID#,#CROSS_ORDER_FLAG#),#ORDER_ID_TO_CHECK#) > 0 */ 			
+ #ORDER_ID_TO_CHECK# IN ( 
+ SELECT ORDER_ID 
+   FROM SFMFG.SFWID_ORDER_DESC 
+  WHERE 'N' = #CROSS_ORDER_FLAG# 
+    AND ORDER_ID = #ORDER_ID# 
+ UNION ALL 
+ SELECT B.ORDER_ID 
+   FROM SFMFG.SFWID_ORDER_DESC A, SFMFG.SFWID_ORDER_DESC B 
+  WHERE 'Y' = #CROSS_ORDER_FLAG# 
+    AND A.ORDER_ID = #ORDER_ID# 
+    AND A.PLAN_ID = B.PLAN_ID 
+    AND A.PLAN_VERSION = B.PLAN_VERSION
+    AND A.PLAN_REVISION = B.PLAN_REVISION 
+    AND A.PLAN_ALTERATIONS = B.PLAN_ALTERATIONS 
+    AND B.ORDER_STATUS IN ('IN QUEUE', 'ACTIVE') 
+    AND ISNULL(B.ORDER_HOLD_STATUS,'-') != 'ORDER_STOP' 
+    AND ISNULL(A.ALT_ID,'-') = ISNULL(B.ALT_ID,'-') 
+    #OPER_KEY_JOIN#
+    UNION ALL 
+ SELECT #ORDER_ID# 
+   FROM DUAL 
+ ) /*+ @Filter */ 
+			</value>
+		</property>
+	</bean>
+
+    <bean id="baseSessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+      <property name="hibernateProperties">
+        <props>
+            <prop key="hibernate.dialect">org.hibernate.dialect.SQLServerDialect</prop>
+            <prop key="hibernate.show_sql">false</prop>
+            <prop key="hibernate.cache.use_query_cache">true</prop>
+            <prop key="hibernate.jdbc.fetch_size">300</prop>
+            <prop key="hibernate.default_schema">${defaultSchema}</prop>
+        </props>
+      </property>
+      <property name="dataSource">
+        <ref bean="dataSource"/>
+      </property>
+      /* <property name="lobHandler" ref="lobHandler" /> */ This line was in comment
+	  <property name="mappingLocations">
+	  	<list>
+	  		<value>classpath*:com/*/solumina/**/*.hbm.xml</value>
+	  		<value>classpath*:sqlserver/*.hbm.xml</value>
+	  		<value>classpath*:sqlserver/com/*/solumina/**/*.hbm.xml</value>
+	  	</list>
+	  </property>
+      
+    </bean>
+	-->
+
+    <bean id="soluminaExtensionSequence" 
+    	class="com.ibaset.common.dao.SqlServerGuidMaxValueIncrementer" 
+    	autowire="no">
+    	<property name="dataSource">
+    		<ref bean="dataSource" />
+    	</property>
+    	<property name="incrementerName">
+    		<value>SFMFG.SFDB_GUID()</value>
+    	</property>
+    	<property name="enableString">
+    		<value>true</value>
+    	</property>
+    </bean>
+
+	<bean id="licenseCompatibilityCheck"
+		class="com.ibaset.solumina.sfcore.application.impl.MSSqlLicenseCompatibilityCheck" />
+
+</beans>

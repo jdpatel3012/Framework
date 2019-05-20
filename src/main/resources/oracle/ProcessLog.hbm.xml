@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2016 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+<!DOCTYPE hibernate-mapping SYSTEM "classpath://hibernate-mapping-3.0.dtd">
+<!-- Generated Mar 25, 2010 2:45:19 PM by Hibernate Tools 3.2.4.GA -->
+<hibernate-mapping default-cascade="save-update" auto-import="false">
+    <class name="com.ibaset.solumina.sfcore.domain.ProcessLog" table="SFCORE_PROCESS_LOG" schema="SFMFG">
+        <id name="processlogId" type="long">
+            <column name="PROCESSLOG_ID" />
+            <generator class="native">
+                <param name="sequence">SFMFG.SFCORE_PROCESS_LOG_SEQ</param>
+            </generator>            
+        </id>
+        <property name="processName" type="string">
+            <column name="PROCESS_NAME" length="30" not-null="true">
+                <comment>name of the task</comment>
+            </column>
+        </property>
+        <property name="userid" type="string">
+            <column name="USERID" length="30" not-null="true">
+                <comment>process owner user id</comment>
+            </column>
+        </property>
+        <property name="status" type="string">
+            <column name="STATUS" length="30" not-null="true">
+                <comment>process status: IN QUEUE, RUNNING, FINISHED, FAILED</comment>
+            </column>
+        </property>
+        <property name="startTime" type="timestamp">
+            <column name="START_TIME" length="7" />
+        </property>
+        <property name="endTime" type="timestamp">
+            <column name="END_TIME" length="7" />
+        </property>
+        <property name="host" type="string">
+            <column name="HOST">
+                <comment>running host identification: IP address or host name</comment>
+            </column>
+        </property>
+        <property name="call" type="clob">
+            <column name="CALL">
+                <comment>JSON-style dump of the task entry point call with all parameters</comment>
+            </column>
+        </property>
+        <property name="errorid" type="big_decimal">
+            <column name="ERRORID" precision="22" scale="0" />
+        </property>
+        <property name="ref1" type="string">
+            <column name="REF1" length="50">
+                <comment>Optional references to a related entity</comment>
+            </column>
+        </property>
+        <property name="ref2" type="string">
+            <column name="REF2" length="50" />
+        </property>
+        <property name="ref3" type="string">
+            <column name="REF3" length="50" />
+        </property>
+        <property name="ref4" type="string">
+            <column name="REF4" length="50" />
+        </property>
+        <property name="ref5" type="string">
+            <column name="REF5" length="50" />
+        </property>
+        <property name="updtUserid" type="string">
+            <column name="UPDT_USERID" length="30" not-null="true" />
+        </property>
+        <property name="timeStamp" type="timestamp">
+            <column name="TIME_STAMP" length="7" not-null="true" />
+        </property>
+        <property name="lastAction" type="string">
+            <column name="LAST_ACTION" length="20" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

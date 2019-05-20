@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2010 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+ <beans xmlns="http://www.springframework.org/schema/beans"
+ 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ 	xmlns:util="http://www.springframework.org/schema/util"
+ 	xmlns:context="http://www.springframework.org/schema/context"
+ 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+ 	http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.2.xsd
+ 	http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.2.xsd"
+ 	default-lazy-init="false" default-autowire="no">
+
+	<bean id="emptyDataSource" class="com.ibaset.common.dao.jndi.EmptyDataSource">
+		<property name="errorMessage"
+			value="MI datasource is not configured. Please add datasource 'miSoluminaDS' to JNDI context" />
+	</bean>
+
+	<bean id="unprotectedWarehouseDataSource" class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiName">
+			<value>java:comp/env/jdbc/soluminaWarehouseDS</value>
+		</property>
+		<property name="defaultObject" ref="unprotectedDataSource" />
+	</bean>
+	
+	<util:properties id="schemaProperties" >
+		<prop key="defaultSchema">SFMFG</prop>
+		<prop key="miSchema">SFMI</prop>
+	</util:properties>
+
+	<beans profile="tomcat">
+		<bean
+			class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+			<property name="properties">
+				<ref bean="schemaProperties" />
+			</property>
+			<property name="ignoreUnresolvablePlaceholders" value="true"/>
+		</bean>
+		
+		<bean id="unprotectedDataSource" class="org.springframework.jndi.JndiObjectFactoryBean">
+			<property name="jndiName">
+				<value>java:comp/env/jdbc/soluminaPrivateDS</value>
+			</property>
+		</bean>
+
+		<bean id="miDataSource" class="com.ibaset.common.dao.jndi.JndiDataSourceFactoryBean">
+			<property name="jndiName">
+				<value>java:comp/env/jdbc/miSoluminaDS</value>
+			</property>
+			<property name="cache" value="true" />
+			<property name="defaultObject" ref="emptyDataSource" />
+		</bean>
+		
+	</beans>
+
+	<beans profile="nonTomcat">
+	
+		<bean
+			class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+			<property name="locations">
+        		<list>
+            		<value>classpath:soluminaConfig.properties</value>
+        		</list>
+        	</property>
+			<property name="properties">
+				<ref bean="schemaProperties" />
+			</property>
+			<property name="ignoreUnresolvablePlaceholders" value="true"/>
+		</bean>
+
+		<bean id="unprotectedDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+			destroy-method="close">
+			<property name="driverClass" value="${datasource.driverClass}" />
+			<property name="jdbcUrl" value="${datasource.jdbcUrl}" />
+			<property name="user" value="${datasource.user}" />
+			<property name="password" value="${datasource.password}" />
+			<property name="maxPoolSize" value="${datasource.maxPoolSize}" />
+			<property name="minPoolSize" value="${datasource.minPoolSize}" />
+			<property name="maxStatements" value="${datasource.maxStatements}" />
+			<property name="acquireIncrement" value="${datasource.acquireIncrement}" />
+			<property name="acquireRetryAttempts" value="${datasource.acquireRetryAttempts}" />
+			<property name="acquireRetryDelay" value="${datasource.acquireRetryDelay}" />
+			<property name="autoCommitOnClose" value="${datasource.autoCommitOnClose}" />
+			<property name="breakAfterAcquireFailure" value="${datasource.breakAfterAcquireFailure}" />
+			<property name="checkoutTimeout" value="${datasource.checkoutTimeout}" />
+			<property name="connectionCustomizerClassName" value="${datasource.connectionCustomizerClassName}" />
+			<property name="connectionTesterClassName" value="${datasource.connectionTesterClassName}" />
+			<property name="contextClassLoaderSource" value="${datasource.contextClassLoaderSource}" />
+			<property name="debugUnreturnedConnectionStackTraces"
+				value="${datasource.debugUnreturnedConnectionStackTraces}" />
+			<property name="forceIgnoreUnresolvedTransactions"
+				value="${datasource.forceIgnoreUnresolvedTransactions}" />
+			<property name="forceSynchronousCheckins" value="${datasource.forceSynchronousCheckins}" />
+			<property name="forceUseNamedDriverClass" value="${datasource.forceUseNamedDriverClass}" />
+			<property name="idleConnectionTestPeriod" value="${datasource.idleConnectionTestPeriod}" />
+			<property name="maxAdministrativeTaskTime" value="${datasource.maxAdministrativeTaskTime}" />
+			<property name="maxConnectionAge" value="${datasource.maxConnectionAge}" />
+			<property name="maxIdleTime" value="${datasource.maxIdleTime}" />
+			<property name="maxIdleTimeExcessConnections" value="${datasource.maxIdleTimeExcessConnections}" />
+			<property name="maxStatementsPerConnection" value="${datasource.maxStatementsPerConnection}" />
+			<property name="numHelperThreads" value="${datasource.numHelperThreads}" />
+			<property name="preferredTestQuery" value="${datasource.preferredTestQuery}" />
+			<property name="privilegeSpawnedThreads" value="${datasource.privilegeSpawnedThreads}" />
+			<property name="propertyCycle" value="${datasource.propertyCycle}" />
+			<property name="statementCacheNumDeferredCloseThreads"
+				value="${datasource.statementCacheNumDeferredCloseThreads}" />
+			<property name="testConnectionOnCheckin" value="${datasource.testConnectionOnCheckin}" />
+			<property name="testConnectionOnCheckout" value="${datasource.testConnectionOnCheckout}" />
+			<property name="unreturnedConnectionTimeout" value="${datasource.unreturnedConnectionTimeout}" />
+		</bean>
+
+		<bean id="miDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+			destroy-method="close">
+			<property name="driverClass" value="${miDatasource.driverClass}" />
+			<property name="jdbcUrl" value="${miDatasource.jdbcUrl}" />
+			<property name="user" value="${miDatasource.user}" />
+			<property name="password" value="${miDatasource.password}" />
+			<property name="maxPoolSize" value="${miDatasource.maxPoolSize}" />
+			<property name="minPoolSize" value="${miDatasource.minPoolSize}" />
+			<property name="maxStatements" value="${miDatasource.maxStatements}" />
+			<property name="acquireIncrement" value="${miDatasource.acquireIncrement}" />
+			<property name="acquireRetryAttempts" value="${miDatasource.acquireRetryAttempts}" />
+			<property name="acquireRetryDelay" value="${miDatasource.acquireRetryDelay}" />
+			<property name="autoCommitOnClose" value="${miDatasource.autoCommitOnClose}" />
+			<property name="breakAfterAcquireFailure" value="${miDatasource.breakAfterAcquireFailure}" />
+			<property name="checkoutTimeout" value="${miDatasource.checkoutTimeout}" />
+			<property name="connectionCustomizerClassName" value="${miDatasource.connectionCustomizerClassName}" />
+			<property name="connectionTesterClassName" value="${miDatasource.connectionTesterClassName}" />
+			<property name="contextClassLoaderSource" value="${miDatasource.contextClassLoaderSource}" />
+			<property name="debugUnreturnedConnectionStackTraces"
+				value="${miDatasource.debugUnreturnedConnectionStackTraces}" />
+			<property name="forceIgnoreUnresolvedTransactions"
+				value="${miDatasource.forceIgnoreUnresolvedTransactions}" />
+			<property name="forceSynchronousCheckins" value="${miDatasource.forceSynchronousCheckins}" />
+			<property name="forceUseNamedDriverClass" value="${miDatasource.forceUseNamedDriverClass}" />
+			<property name="idleConnectionTestPeriod" value="${miDatasource.idleConnectionTestPeriod}" />
+			<property name="maxAdministrativeTaskTime" value="${miDatasource.maxAdministrativeTaskTime}" />
+			<property name="maxConnectionAge" value="${miDatasource.maxConnectionAge}" />
+			<property name="maxIdleTime" value="${miDatasource.maxIdleTime}" />
+			<property name="maxIdleTimeExcessConnections" value="${miDatasource.maxIdleTimeExcessConnections}" />
+			<property name="maxStatementsPerConnection" value="${miDatasource.maxStatementsPerConnection}" />
+			<property name="numHelperThreads" value="${miDatasource.numHelperThreads}" />
+			<property name="preferredTestQuery" value="${miDatasource.preferredTestQuery}" />
+			<property name="privilegeSpawnedThreads" value="${miDatasource.privilegeSpawnedThreads}" />
+			<property name="propertyCycle" value="${miDatasource.propertyCycle}" />
+			<property name="statementCacheNumDeferredCloseThreads"
+				value="${miDatasource.statementCacheNumDeferredCloseThreads}" />
+			<property name="testConnectionOnCheckin" value="${miDatasource.testConnectionOnCheckin}" />
+			<property name="testConnectionOnCheckout" value="${miDatasource.testConnectionOnCheckout}" />
+			<property name="unreturnedConnectionTimeout" value="${miDatasource.unreturnedConnectionTimeout}" />
+		</bean>
+
+		<context:component-scan base-package="com.javapitshop.dao" />
+		
+	</beans>
+		
+</beans>

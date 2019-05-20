@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2010 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd"
+	default-lazy-init="false" default-dependency-check="none"
+	default-autowire="no">
+
+	<!-- Default implementation does not cache any data -->
+	<bean id="miQueryCache" class="com.ibaset.common.sql.cache.DefaultQueryCache" >
+	</bean>
+	<!-- By default use only statistics listener. Statistics listener is the same as for Solumina DB -->
+	<alias alias="miChainedDataListener" name="statistics" />
+	
+	<bean id="miBaseDao" abstract="true">
+		<property name="databaseInformation" ref="miDatabaseInformation" />
+		<!-- Using same lobHandler as Solumina DB, assuming MI and Solumina DBs use same connection pooling technology  -->
+		<property name="lobHandler" ref="lobHandler" />
+		<property name="dataSource" ref="miDataSource" />
+		<property name="dataListener" ref="miChainedDataListener" />
+		<property name="queryCache" ref="miQueryCache" />
+	</bean>
+
+	<bean id="miTransactionManager"
+		class="org.springframework.jdbc.datasource.SpringTransactionManager">
+		<property name="dataSource" ref="miDataSource" />
+		<property name="nestedTransactionAllowed" value="true" />
+		<property name="globalRollbackOnParticipationFailure" value="false" />
+		<property name="dataListener" ref="miChainedDataListener" />
+	</bean>
+
+	<bean id="miTxProxyTemplate"
+		class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
+		abstract="true">
+		<property name="transactionManager" ref="miTransactionManager" />
+		<property name="transactionAttributes">
+			<props>
+				<prop key="*">PROPAGATION_REQUIRED</prop>
+			</props>
+		</property>
+		<property name="preInterceptors">
+			<list>
+				<ref bean="statisticsInterceptor"/>
+			</list>
+		</property>
+	</bean>
+
+</beans>

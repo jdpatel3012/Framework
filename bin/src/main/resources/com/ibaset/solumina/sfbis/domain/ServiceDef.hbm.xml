@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2016 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+<!DOCTYPE hibernate-mapping SYSTEM "classpath://hibernate-mapping-3.0.dtd">
+	<!-- Generated Sep 23, 2009 10:21:04 AM by Hibernate Tools 3.2.4.GA -->
+<hibernate-mapping default-cascade="save-update"
+	auto-import="false">
+	<class name="com.ibaset.solumina.sfbis.domain.ServiceDef" table="SFBIS_SERVICE_DEF"	schema="SFMFG">
+		<id name="serviceName" type="string">
+			<column name="SERVICE_NAME" length="25" />
+			<generator class="assigned" />
+		</id>
+		<property name="updtUserid" type="string">
+			<column name="UPDT_USERID" length="30" not-null="true" />
+		</property>
+		<property name="timeStamp" type="timestamp">
+			<column name="TIME_STAMP" length="7" not-null="true" />
+		</property>
+		<property name="lastAction" type="string">
+			<column name="LAST_ACTION" length="20" not-null="true" />
+		</property>
+		<property name="directionIndicator" type="string">
+			<column name="DIRECTION_INDICATOR" length="10" not-null="true" />
+		</property>
+		<property name="enabledFlag" type="yes_no">
+			<column name="ENABLED_FLAG" length="1" not-null="true" />
+		</property>
+		<property name="replyEnabledFlag" type="yes_no">
+			<column name="REPLY_ENABLED_FLAG" length="1" not-null="true" />
+		</property>
+		<property name="loggingFlag" type="yes_no">
+			<column name="LOGGING_FLAG" length="1" not-null="true" />
+		</property>
+		<property name="queueName" type="string">
+			<column name="QUEUE_NAME" length="80" not-null="true" />
+		</property>
+		<property name="replyQueueName" type="string">
+			<column name="REPLY_QUEUE_NAME" length="80" not-null="true" />
+		</property>
+		<property name="logTableName" type="string">
+			<column name="LOG_TABLE_NAME" length="30" not-null="true" />
+		</property>
+		<property name="replyLogTableName" type="string">
+			<column name="REPLY_LOG_TABLE_NAME" length="30" not-null="true" />
+		</property>
+		<property name="concurrentConsumers" type="integer">
+			<column name="CONCURRENT_CONSUMERS" precision="22" scale="0"
+				not-null="true" />
+		</property>
+		<property name="soluminaRefTableName" type="string">
+			<column name="SOLUMINA_REF_TABLE_NAME" length="30" not-null="true" />
+		</property>
+		<property name="selectSqlLog" type="clob">
+			<column name="SELECT_SQL_LOG" />
+		</property>
+		<property name="description" type="string">
+			<column name="DESCRIPTION" />
+		</property>
+	    <!-- <property name="webServiceURL" type="string">
+			<column name="WEBSERVICE_URL" />
+		</property>
+		-->
+	</class>
+</hibernate-mapping>

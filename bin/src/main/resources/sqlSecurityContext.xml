@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2010 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+ <beans xmlns="http://www.springframework.org/schema/beans"
+ 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd"
+ 	default-lazy-init="false" default-dependency-check="none"
+ 	default-autowire="no">
+
+	<bean id="SQLQueryThreatAnalyzer" class="com.ibaset.common.sql.security.SQLQueryThreatAnalyzer">
+		<property name="dataSource" ref="unprotectedDataSource" />
+		<property name="databaseInformation" ref="databaseInformation" />
+		<property name="sqlLibQuery">
+			<value>
+				select SQL_TEXT from SFCORE_SQL_LIB
+			</value>
+		</property>
+		<property name="permittedQueries">
+			<list>
+				<value>SELECT * FROM SFMFG.SFCORE_SQL_LIB WHERE SQL_ID=?</value>
+				<value>SELECT * FROM SFCORE_SQL_LIB WHERE SQL_ID=?</value>
+				<value>SELECT * FROM SFDB_INFO</value>
+				<value>SELECT PARAMETER_VALUE FROM SFCORE_GLOBAL_CONFIGURATION WHERE PARAMETER_NAME = ?</value>
+				<value>SELECT PARAMETER_VALUE FROM SFFND_GLOBAL_CONFIGURATION WHERE CONFIG_MODULE_NAME = ? AND PARAMETER_NAME = ?</value>
+				<value>SELECT A.USERID, A.PRIV FROM SFCORE_USER_PRIVS A WHERE A.USERID =?</value>
+				<value>SELECT DISTINCT U.USERID AS USERNAME, U.PASSWORD AS PASSWORD, 1 AS ENABLED FROM SFCORE_USER U WHERE U.USERID = ?</value>
+				<value>SELECT A.COMPATIBILITY_INFO,A.UPDT_USERID, A.TIME_STAMP FROM SFCORE_COMPATIBILITY_INFO A WHERE TIME_STAMP = (SELECT MAX(TIME_STAMP) FROM SFCORE_COMPATIBILITY_INFO B)</value>
+				<value>SELECT LICENSE_DATA FROM SFCORE_LICENSE WHERE LICENSE_ID=?</value>
+				<value>SELECT LICENSE_ID FROM SFCORE_LICENSE ORDER BY LICENSE_TIME_STAMP DESC</value>
+				<value>SELECT INI_TEXT,INI_DATA,INI_DATA_KEY FROM SFCORE_INI_LIB WHERE INI_ID = ?</value>
+				<value>SELECT TIME_STAMP FROM SFCORE_INI_LIB WHERE INI_ID = ?</value>
+				<value>SELECT SFMFG.SFFND_SECURITY_GROUP_FLAG_GET() AS PARAMETER_VALUE FROM DUAL</value>
+				<value>SELECT SFMFG.SFFND_SECURITY_GROUP_FLAG_GET() FROM DUAL</value>
+				<value>SELECT SFFND_SECURITY_GROUP_FLAG_GET() FROM DUAL</value>
+				<value>SELECT SQL_ID_DISPL,DESCRIPTION,SQL_ID FROM SFCORE_SQL_LIB</value>
+				<value>SELECT INI_ID_DISPL,DESCRIPTION,INI_ID FROM SFCORE_INI_LIB</value>
+				<value>select object_id,object_tag,object_desc,object_rev,object_type,classification,status,blocktype from sfcore_slide_info</value>
+				<value>select object_id,object_tag,object_desc,object_rev,object_type,classification,status,blocktype,security_group from sfcore_slide_info</value>
+				<value>SELECT OBJECT_ID,OBJECT_TAG,OBJECT_DESC,OBJECT_REV,OBJECT_TYPE,CLASSIFICATION,STATUS,BLOCKTYPE,SECURITY_GROUP FROM SFCORE_MM_OBJS_WO_FOLDERS</value>
+				<value>Select UDV_ID,UDV_TAG,UDV_DESC from SFCORE_UDV_LIB order by UDV_ID</value>
+				<value>Select * from SFCORE_UDV_LIB where UDV_ID=?</value>
+				<value>select OBJECT_ID from sfcore_mm_object t where t.object_type=?</value>
+				<value>SELECT FOLDER_TYPE, FOLDER_TAG, FOLDER_TITLE FROM SFCORE_MM_FOLDER_DEF WHERE FOLDER_ID=?</value>
+				<value>SELECT COUNT(*) AS COUNT_ from SFCORE_UDV_LIB</value>
+				<value>SELECT COUNT(*) AS COUNT_ FROM SFCORE_SQL_LIB</value>
+				<value>SELECT TIME_STAMP FROM SFFND_LANGUAGE_DATA WHERE LANGUAGE_CODE = ?</value>
+				<value>SELECT MO_DATA FROM SFFND_LANGUAGE_DATA WHERE LANGUAGE_CODE = ?</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="SQLSecurityManager" class="com.ibaset.common.sql.security.SQLSecurityManager">
+		<property name="dataSource" ref="unprotectedDataSource" />
+		<property name="securityEnabledQuery">
+			<value>
+			SELECT SFMFG.SFFND_SECURITY_GROUP_FLAG_GET() FROM DUAL
+			</value>
+		</property>
+		<property name="securityPolicy">
+			<bean class="com.ibaset.common.sql.security.SecurityGroupPolicy">
+				<property name="securityGroupColumnName" value="SECURITY_GROUP" />
+				<property name="userSecurityGroupQuery">
+					<value>
+					select SECURITY_GROUP 
+					from SFFND_USER_SEC_GRP 
+					where 
+						USERID = ?
+						and EFFECTIVE_END_DATE > SFMFG.SFDB_SYSDATE()
+						and EFFECTIVE_START_DATE &lt;= SFMFG.SFDB_SYSDATE()
+					</value>
+				</property>
+				<property name="securityGroupsQuery">
+					<value>
+					select SECURITY_GROUP 
+					from SFFND_SECURITY_GROUP_DEF
+					where 
+						OBSOLETE_RECORD_FLAG = 'N'
+						and (EXPIRATION_DATE > SFMFG.SFDB_SYSDATE() or EXPIRATION_DATE is null)
+					</value>
+				</property>
+			</bean>
+		</property>
+		<property name="protectedObjects">
+			<set>
+				<!-- Item -->
+				<value>SFPL_ITEM_DESC_MASTER_ALL</value>
+				<value>SFPL_ITEM_DESC_MASTER_ALL_HIST</value>
+				<value>SFPL_ITEM_DESC</value>
+				<value>SFPL_ITEM_DESC_ALL</value>
+				<value>SFPL_ITEM_DESC_MASTER</value>
+				<value>SFSQA_PO_LINE_V</value>
+                <value>SFPL_ITEM_MASTER_SEARCH_TEXT_GET</value>
+				<!-- MBOM -->
+				<value>SFPL_MFG_BOM_REV</value>
+				<value>SFPL_MFG_BOM_REF_V</value>
+				<value>SFPL_MFG_BOM_V</value>
+				<value>SFPL_BOM_SEARCH_TEXT_GET</value>
+				<value>SFPL_BOM_PARTS_SEL</value>
+				<value>SFPL_BOM_PART_INFO_GET</value>
+				<!-- OrderDesc, OperItems, OperTools -->
+				<value>SFWID_STEP_V</value>
+				<value>SFWID_DC_MATRIX_INFO_TAB_GET</value>
+				<value>SFWID_DC_MATRIX_COPY_INFO_GET</value>
+				<value>SFWID_PART_ISSUE_INFO_TAB_GET</value>
+				<value>SFWID_ORDER_OPERS_DISP_DATA</value>
+				<value>SFWID_ACTIV_NQ_ORDERS</value>
+				<value>SFWID_PENDING_ORDERS</value>
+				<value>SFWID_ORDERS</value>
+				<value>SFWID_ORDER_DESC</value>
+				<value>SFWID_ORDER_DESC_HIST</value>
+				<value>SFWID_ORDER_OPERS_DISPATCH</value>
+				<value>SFDB_SUPERCEDE_ORDERS_TO_V</value>
+				<value>SFWID_ALT_PROP_V</value>
+				<value>SFWID_ALT_IN_PROCESS_V</value>
+				<value>SFWID_WORKCENTER_INFO</value>
+				<value>SFWID_HOLDS_INFO_V</value>
+				<value>SFWID_CUSTINSP_DISPATCH1_V</value>
+				<value>SFWID_INSPQAPR_DISPATCH1_V</value>
+				<value>SFWID_OPER_ITEMS</value>
+				<value>SFWID_OPER_ITEMS_HIST</value>
+				<value>SFWID_OPER_ITEM_V</value>
+				<value>SFWID_OPER_TOOL</value>
+				<value>SFWID_OPER_TOOL_HIST</value>
+				<value>SFWID_TOOL_DC_MATRIX_SUPPORT</value>
+				
+				<value>SFWID_BUYOFF_TAB_V</value>
+				<value>SFWID_CURRENT_SRLOPR_DETAILS_V</value>
+				<value>SFWID_CUSTINSP_DISPATCH1_V</value>
+				<value>SFWID_DUPLICATE_REF_DES_V</value>
+				<value>SFWID_HOLDS_INFO_V</value>
+				<value>SFWID_HOLD_TOOL_V</value>
+				<value>SFWID_INSPQAPR_DISPATCH1_V</value>
+				<value>SFWID_ITEM_WHERE_USED_V</value>
+				<value>SFWID_OPERDC_VARDEF_DATCOLS</value>
+				<value>SFWID_OPERDC_VARDEF_PARTCHGS</value>
+				<value>SFWID_OPERDC_VARDEF_PARTS</value>
+				<value>SFWID_OPER_INV_REQUIRED_V</value>
+				<value>SFWID_OPER_ITEMS_DC_V</value>
+				<value>SFWID_OPER_ITEM_V</value>
+				<value>SFWID_OPER_PROCESS_V</value>
+				<value>SFWID_OPER_TOOL_DC_V</value>
+				<value>SFWID_OPER_TOOL_V</value>
+				<value>SFWID_OPER_V</value>
+				<value>SFWID_ORDERHDR_LOT_SERIAL_V</value>
+				<value>SFWID_ORDER_OPERS_DISPATCH</value>
+				<value>SFWID_ORDER_V</value>
+				<value>SFWID_PARTSMADE_DISP1_V</value>
+				<value>SFWID_PARTSMADE_DISP2_V</value>
+				<value>SFWID_PART_DC_MATRIX_SUPPORT</value>
+				<value>SFWID_SCOPE_V</value>
+				<value>SFWID_SERIAL_ALL_PARTS_V</value>
+				<value>SFWID_SERIAL_OPER_CTRL_RECS</value>
+				<value>SFWID_SERIAL_OPER_PART_V</value>
+				<value>SFWID_SRLOPR_EMB_CONTROL_V</value>
+				<value>SFWID_SRL_EXEC_CONTROL_DATA_V</value>
+				<value>SFWID_STEP_V</value>
+				<value>SFWID_TOOL_DAT_COL_V</value>
+				<value>SFWID_TOOL_DC_MATRIX_SUPPORT</value>
+				<value>SFWID_TOOL_V</value>
+				<value>SFWID_UNIT_INFO_VIEW</value>
+				<value>SFWID_VARIABLES_ASSIGNED</value>
+				<value>SFWID_VARIABLES_AVAILABLE</value>
+				<value>SFWID_VARIABLES_CURRENT_VALUES</value>
+				<value>SFWID_VARIABLES_WHERE_USED</value>
+				<value>SFWID_WORKCENTER_INFO</value>
+				<value>SFFND_AUTHORIZED_LIENS_V</value>
+				<value>SFWID_AS_WORKED_BOM</value>
+				<value>SFWID_AS_WORKED_BOM_HIST</value>
+				<value>SFWID_AS_WORKED_ITEM</value>
+				<value>SFWID_AS_WORKED_ITEM_HIST</value>
+				<value>SFWID_ORDER_SEARCH_TEXT_MV</value>
+				<value>SFWID_ORDER_SEARCH_TEXT_GET</value>
+				<!-- Holds -->
+				<value>SFWID_HOLDS</value>
+				<value>SFWID_HOLDS_HIST</value>
+				
+				<!-- Tool -->
+				<value>SFFND_TOOL</value>
+				<value>SFFND_TOOL_HIST</value>
+				<value>SFFND_TOOL_SERIAL_V</value>
+				<value>SFFND_TOOL_SRL_TIMEFORSVC_V</value>
+
+				<!-- PlanDesc  -->
+				<value>SFPL_PLAN_DESC</value>
+				<value>SFPL_OPER_PART_V</value>
+				<value>SFPL_OPER_V</value>
+				<value>SFPL_PART_V</value>
+				<value>SFPL_PLANNER_DISPATCH_V</value>
+				<value>SFPL_PLAN_DISPATCH_V</value>
+				<value>SFPL_PLAN_NODE_V</value>
+				<value>SFPL_PLAN_V</value>
+				<value>SFPL_PWP2_V</value>
+				<value>SFPL_SCOPE_V</value>
+				<value>SFPL_STDTEXT_REF</value>
+				<value>SFPL_STEPDC_VARDEF_DATCOLS</value>
+				<value>SFPL_STEPDC_VARDEF_PARTCHGS</value>
+				<value>SFPL_STEPDC_VARDEF_PARTS</value>
+				<value>SFPL_STEP_V</value>
+				<value>SFPL_VARIABLES_ASSIGNED</value>
+				<value>SFPL_VARIABLES_WHERE_USED</value>
+				<value>SFPL_PLAN_DESC_SEARCH_TEXT_GET</value>
+				<value>SFPL_PLANNER_HOME_PAGE_V</value>
+				<value>SFPL_PART_TAB_V</value>
+				
+				<!-- STEP_ITEMS, STEP_TOOL -->
+				<value>SFPL_STEP_ITEMS</value>
+				<value>SFPL_STEP_TOOL</value> 
+ 				<value>SFPL_OPER_TOOL_V</value>
+ 				<value>SFPL_TOOL_V</value>
+ 				<value>SFPL_DUPLICATE_REF_DES_V</value>
+ 				<value>SFPL_OPER_PART_V</value>
+ 				<value>SFPL_TOOL_TAB_V</value>
+
+                <!-- Disc Item -->				
+                <value>SFQA_DISC_ITEM</value>
+                <value>SFQA_DISC_ITEM_HIST</value>
+                <value>SFQA_DISC_ITEM_DISPATCH_V</value>
+                <value>SFQA_DISC_ITEM_EXPLD</value>
+                <value>SFQA_DISC_ITEM_PROCESS_TYPE_V</value>
+                <value>SFQA_DISC_ITEM_SCOPE_V</value>
+                <value>SFQA_DISC_ITEM_V</value>
+                <value>SFQA_DISC_TASK_DISPATCH_V</value>
+                <value>SFQA_DISC_ITEM_SEARCH_TEXT_MV</value>
+                <value>SFQA_DISC_SEARCH_TEXT_GET</value>
+
+				<!-- MM Object -->	
+				<value>SFWID_MULTIMEDIA_TAB_FILES</value>
+				<value>SFWID_CURRENT_OBJECTS</value>
+				<value>SFCORE_MM_OBJECT</value>
+				<value>SFCORE_COMPLETE_MM_OBJECTS</value>
+				<value>SFCORE_EMBOBJ_CLASSIFICATIONS</value>
+				<value>SFCORE_FOLDER_OBJ_TYPES</value>
+				<value>SFCORE_LATEST_MM_OBJ_INFO_V</value>
+				<value>SFCORE_MM_OBJECT_EXPLD</value>
+				<value>SFCORE_OBJECT_REVS</value>
+				<value>SFCORE_SLIDE_IMAGES</value>
+				<value>SFCORE_SLIDE_INFO</value>
+				<value>SFCORE_STDTEXT_INFO</value>
+				<value>SFCORE_USER_OBJECT_LIB</value>
+				<value>SFDB_GEN_BUSINESS_OBJECT_CODE</value>
+				<value>SFDB_LATEST_EMBED_OBJECTS_V</value>
+				<value>SFFND_FILE_MGMT_V</value>
+				<value>SFIFC_COMPLETED_MM_OBJECTS_V</value>
+				<value>SFIFC_HTREF_LOCKEDOBJECTS_VIEW</value>
+				<value>SFPL_CURRENT_OBJECTS</value>
+				<value>SFPL_MULTIMEDIA_TAB_FILES</value>
+				<value>SFCORE_MM_OBJS_WO_FOLDERS</value>
+				<value>SFCORE_REVERSE_OBJ_FLDR_LOOKUP</value>
+				<value>SFFND_3DMODEL_OBJECTS_V</value>
+				<value>SFFND_DRAWING_OBJECTS_V</value>
+				<value>SFFND_OBJECT_CLASSIFICATION</value>
+				<value>SFFND_PROCESS_SPEC_OBJECTS_V</value>
+                <value>SFFND_FILE_SEARCH_TEXT_MV</value>
+                <value>SFFND_FILE_SEARCH_TEXT_GET</value>
+                <value>SFCORE_STDTEXT_SEARCH_TEXT_GET</value>
+                <value>SFFND_MULTIMEDIA_SEARCH_TEXT_GET</value>
+ 				
+ 				<!-- Change Request -->
+ 				<value>SFPL_ALL_AFFECTED_OBJECTS_V</value>
+ 				<value>SFPL_ALL_RESULTING_OBJECTS_V</value>
+ 				<value>SFPL_ALL_IMPACTED_OBJECTS_V</value>
+
+ 				<!-- Inspection Definition-->
+ 				<value>SFSQA_INSP_DEFINITION_REV</value>
+ 				<value>SFSQA_INSP_DEFINITION_REV_V</value>
+ 				
+ 				<!-- Inspection Order  -->
+ 				<value>SFSQA_INSP_ORDER_DESC</value>
+ 				<value>SFSQA_INSP_ORDER_DESC_V</value>
+ 				<value>SFSQA_INSP_ORDER_SEARCH_TEXT_GET</value>
+ 				
+ 				<!-- Group Job -->
+ 				<value>SFWID_GROUP_JOB</value>
+ 			
+ 			</set>
+		</property>
+		<property name="queryThreatAnalyzer" ref="SQLQueryThreatAnalyzer" />
+	</bean>
+	<bean id="dataSource" class="com.ibaset.common.sql.security.ProtectedDataSource">
+		<property name="dataSource" ref="unprotectedDataSource" />
+		<property name="securityManager" ref="SQLSecurityManager" />
+	</bean>
+	
+	<bean id="warehouseDataSource" class="com.ibaset.common.sql.security.ProtectedDataSource">
+		<property name="dataSource" ref="unprotectedWarehouseDataSource" />
+		<property name="securityManager" ref="SQLSecurityManager" />
+	</bean>
+ 	
+ </beans>

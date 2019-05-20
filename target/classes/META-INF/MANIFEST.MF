@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Implementation-Revision: 
+Implementation-Title: solumina-framework
+Implementation-Version: 
+Built-By: jpatel1
+Implementation-Vendor-Id: com.ibaset.solumina
+Build-Jdk: 1.8.0_201
+Created-By: Maven Integration for Eclipse
+Implementation-Vendor: iBASEt
+

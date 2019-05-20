@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beansProjectDescription>
+	<configExtensions>
+		<configExtension>xml</configExtension>
+	</configExtensions>
+	<configs>
+		<config>src/main/resources/oracleFrameworkContext.xml</config>
+		<config>src/main/resources/microsoftSQLServerFrameworkContext.xml</config>
+		<config>src/main/resources/frameworkContext.xml</config>
+		<config>src/test/resources/testContext.xml</config>
+	</configs>
+	<configSets>
+		<configSet>
+			<name><![CDATA[framework]]></name>
+			<allowBeanDefinitionOverriding>true</allowBeanDefinitionOverriding>
+			<incomplete>false</incomplete>
+			<configs>
+				<config>src/main/resources/frameworkContext.xml</config>
+				<config>src/main/resources/microsoftSQLServerFrameworkContext.xml</config>
+				<config>src/main/resources/oracleFrameworkContext.xml</config>
+				<config>src/test/resources/testContext.xml</config>
+			</configs>
+		</configSet>
+	</configSets>
+</beansProjectDescription>

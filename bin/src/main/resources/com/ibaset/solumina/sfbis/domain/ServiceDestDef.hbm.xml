@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2016 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+<!DOCTYPE hibernate-mapping SYSTEM "classpath://hibernate-mapping-3.0.dtd">
+<!-- Generated Jan 26, 2012 11:33:07 AM by Hibernate Tools 3.2.4.GA -->
+<hibernate-mapping default-cascade="save-update" auto-import="false">
+    <class name="com.ibaset.solumina.sfbis.domain.ServiceDestDef" table="SFBIS_SERVICE_DEST_DEF" schema="SFMFG">
+        <cache usage="read-write" />
+        <composite-id name="id" class="com.ibaset.solumina.sfbis.domain.ServiceDestDefId">
+            <key-property name="serviceName" type="string">
+                <column name="SERVICE_NAME" length="25" />
+            </key-property>
+            <key-property name="destinationName" type="string">
+                <column name="DESTINATION_NAME" length="40" />
+            </key-property>
+        </composite-id>
+        <many-to-one name="serviceDef" class="com.ibaset.solumina.sfbis.domain.ServiceDef" update="false" insert="false" fetch="select">
+            <column name="SERVICE_NAME" length="25" not-null="true" />
+        </many-to-one>
+        <property name="communicationMode" type="string">
+            <column name="COMMUNICATION_MODE" length="20" not-null="true" />
+        </property>
+        <property name="transportOption" type="string">
+            <column name="TRANSPORT_OPTION" length="20" not-null="true" />
+        </property>
+        <property name="failoverFlag" type="yes_no">
+            <column name="FAILOVER_FLAG" length="1" not-null="true" />
+        </property>
+        <property name="enabled" type="yes_no">
+            <column name="ENABLED" length="1" not-null="true" />
+        </property>
+        <property name="logging" type="yes_no">
+            <column name="LOGGING" length="1" not-null="true" />
+        </property>
+        <property name="updtUserid" type="string">
+            <column name="UPDT_USERID" length="30" not-null="true" />
+        </property>
+        <property name="timeStamp" type="timestamp">
+            <column name="TIME_STAMP" length="7" not-null="true" />
+        </property>
+        <property name="lastAction" type="string">
+            <column name="LAST_ACTION" length="20" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

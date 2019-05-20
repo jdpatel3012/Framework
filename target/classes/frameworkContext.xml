@@ -1,0 +1,662 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2015 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	default-lazy-init="false" default-autowire="no"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd">
+
+	<import resource="sqlSecurityContext.xml"/>
+	<import resource="miContext.xml"/>
+	<import resource="scaffoldFrameworkContext.xml"/>
+	
+<!--
+	<bean id="soluminaClientFactory"
+		class="com.ibaset.common.client.SoluminaServiceLocator"
+		lazy-init="false" />
+-->
+	<!-- <bean id="roleVoter" class="org.acegisecurity.vote.RoleVoter"> -->
+	<bean id="roleVoter" class="org.springframework.security.access.vote.RoleVoter">
+		<property name="rolePrefix">
+			<value></value>
+		</property>
+	</bean>
+
+	<bean id="extensionAutoProxyCreator"
+		class="com.ibaset.common.event.ExtensionAutoProxyCreator"
+		depends-on="soluminaClientFactory" />
+<!-- 
+	<bean id="eventPublisher" class="com.ibaset.common.event.SoluminaEventPublisher" />
+ -->
+	<bean id="eventProperties"
+		class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="locations">
+			<list>
+				<value>classpath:extension.properties</value>
+			</list>
+		</property>
+		<property name="ignoreResourceNotFound">
+			<value>true</value>
+		</property>
+	</bean>
+
+	<!-- <bean id="authenticationManager"
+		class="org.acegisecurity.providers.ProviderManager"> -->
+	<bean id="mainAuthenticationManager"
+		class="org.springframework.security.authentication.ProviderManager">
+		<constructor-arg index="0">
+			<list>
+				<ref bean="authProvider" />
+			</list>
+		</constructor-arg>
+		<property name="eraseCredentialsAfterAuthentication" value="false" />
+	</bean>
+
+	<bean id="authProvider"
+		class="org.springframework.security.authentication.dao.SoluminaDaoAuthenticationProvider">
+		<property name="soluminaUserDetailsLoader" ref="detailsLoader" />
+		<property name="delegateProvider">
+			<bean
+				class="org.springframework.security.authentication.dao.DaoAuthenticationProviderImpl">
+				<property name="userDetailsService" ref="jdbcDaoImpl" />
+				<property name="saltSource">
+					<ref bean="saltSource" />
+				</property>
+				<property name="passwordEncoder">
+					<ref bean="passwordEncoder" />
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="soluminaCipherUtils" class="com.ibaset.common.security.SoluminaCipherUtilsImpl"/>
+	
+	<bean id="saltSource"
+		class="com.ibaset.common.security.ToStringSystemWideSaltSource">
+		<property name="systemWideSalt">
+			<value>/C]5#*/HFfB 7?cK/?At$x+"DaL3P</value>
+		</property>
+	</bean>
+
+	<bean id="passwordEncoder"
+		class="com.ibaset.common.security.Md5ShaPasswordEncoder">
+		<property name="encodeHashAsBase64">
+			<value>false</value>
+		</property>
+		<property name="uppercaseResults">
+			<value>true</value>
+		</property>
+		<property name="globalConfiguration">
+			<ref bean="globalConfigurations" />
+		</property>
+	</bean>
+
+	<bean id="jdbcDaoImpl"
+		class="com.ibaset.common.security.context.SoluminaJdbcDaoImpl" init-method="initMappingSqlQueries">
+		<property name="rolePrefix">
+			<value></value>
+		</property>
+		<property name="usersByUsernameQuery">
+			<value>
+                SELECT U.USERID AS USERNAME, U.PASSWORD AS PASSWORD,
+                       1 AS ENABLED, 
+                       CASE WHEN U.ACCOUNT_STATUS = 'OPEN' AND
+                                 G.PARAMETER_VALUE > COALESCE(SU.USER_LOGIN_ATTEMPT, 0)
+                       THEN 1 ELSE 0 END AS ACCOUNTNONLOCKED
+                  FROM SFCORE_USER U LEFT OUTER JOIN SFFND_USER SU ON SU.USERID = U.USERID,
+                       (SELECT C.PARAMETER_VALUE FROM SFFND_GLOBAL_CONFIGURATION C
+                         WHERE C.CONFIG_MODULE_NAME = 'FOUNDATION'
+                           AND C.PARAMETER_NAME = 'USER_LOGIN_FAILED_LIMIT') G
+                 WHERE U.USERID = ?
+			</value>
+		</property>
+		<property name="authoritiesByUsernameQuery">
+			<value>
+				SELECT A.USERID, A.PRIV FROM SFCORE_USER_PRIVS A 
+				WHERE A.USERID = ? 
+				AND  (A.USERID = 'ANONYMOUS' OR (A.USERID != 'ANONYMOUS' AND 'N' = ?))
+				UNION        
+				SELECT DISTINCT A.USERID, A.PRIV FROM SFFND_LICENSE_USERS LU, SFCORE_USER_PRIVS A, table(SFCORE_DISPLAY_LICENSED_PRIVS(LU.LICENSE_NAME)) B
+				WHERE A.USERID = ?
+				AND A.USERID = LU.USERID
+				AND A.PRIV = B.COLUMN_VALUE
+				AND A.USERID != 'ANONYMOUS' AND 'Y' = ?
+				AND SFMFG.SFCORE_DECRYPT_STRING(LU.LICENSE_CHECK) = LU.USERID || LU.LICENSE_NAME || LU.ROWID
+				UNION 
+		        SELECT DISTINCT A.USERID, PA.PRIV_ALIAS AS PRIV FROM SFCORE_USER_PRIVS A, SFCORE_APPLICATION_ACCESS_CTRL PA
+		        WHERE A.USERID = ?
+		        AND A.PRIV = PA.PRIV
+		        AND A.USERID != 'ANONYMOUS' AND 'Y' = ?
+			</value>
+		</property>
+		<property name="ldapPrivQuery">
+			<value>
+				select PRIV from SFCORE_APP_ROLE_PRIVS P,
+				table(SFFND_PARSE_FCN(?, ',')) T where P.ROLE =
+				T.COLUMN_VALUE
+			</value>
+		</property>
+		<property name="dataSource">
+			<ref bean="dataSource" />
+		</property>
+		<property name="soluminaUserDetailsLoader">
+			<ref bean="detailsLoader" />
+		</property>
+	</bean>
+<!-- 
+	<bean id="soluminaTransactionQueryCacheFactory" class="com.ibaset.common.sql.cache.TransactionQueryCacheFactoryImpl">
+		<property name="dataSource" ref="dataSource" />
+		<property name="dataListener" ref="chainedDataListener" />
+	</bean>
+ -->
+	<bean id="soluminaTransactionManager"
+		class="org.springframework.jdbc.datasource.TransactionManagerImpl">
+		<property name="dataSource" ref="dataSource" />
+		<property name="unprotectedDataSource" ref="unprotectedDataSource" />
+		<property name="queryCacheFactory" ref="soluminaTransactionQueryCacheFactory" />
+		<property name="login" ref="login" />
+		<property name="dataListener" ref="chainedDataListener" />
+		<property name="soluminaEventPublisher" ref="eventPublisher" />
+		<property name="soluminaSavePoint" ref="soluminaSavePoint" />
+	</bean>
+<!--
+	<bean id="parameters"
+		class="com.ibaset.solumina.sffnd.application.impl.ParametersImpl">
+		<property name="parametersDao" ref="parametersDao" />
+	</bean>
+
+	<bean id="parametersDao" parent="baseDao"
+		class="com.ibaset.solumina.sffnd.dao.impl.ParametersDaoImpl" />
+-->
+<!--
+ 	<bean id="mmObject" parent="txProxyTemplate" lazy-init="true">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.MultiMediaObjectImpl">
+				<property name="multiMediaObjectDao"
+					ref="multiMediaObjectDao" />
+			</bean>
+		</property>
+	</bean>
+ -->
+	<bean id="detailsLoader"
+		class="com.ibaset.common.security.context.SoluminaUserDetailsLoader">
+		<property name="globalConfiguration" ref="globalConfigurations" />
+		<property name="privQuery" ref="jdbcDaoImpl" />
+	</bean>
+<!--
+	<bean id="databaseInformation"
+		class="com.ibaset.common.sql.DatabaseInformationHolder">
+		<property name="dualTable">
+			<value>from dual</value>
+		</property>
+		<property name="schemaPrefix">
+			<value>${defaultSchema}.</value>
+		</property>
+	</bean>
+
+	<bean id="statistics" class="com.ibaset.solumina.stat.StatisticsImpl" />
+
+	<alias alias="chainedDataListener" name="statistics" />
+ 	
+	<bean id="soluminaQueryCache" class="com.ibaset.common.sql.cache.DefaultQueryCache">
+	</bean>
+
+	<bean id="baseDao" abstract="true">
+		<property name="databaseInformation" ref="databaseInformation" />
+		<property name="lobHandler" ref="lobHandler" />
+		<property name="dataSource" ref="dataSource" />
+		<property name="dataListener" ref="chainedDataListener" />
+		<property name="queryCache" ref="soluminaQueryCache" />
+	</bean>
+
+	<bean id="message" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.MessageImpl">
+				<property name="messsageDao" ref="messageDao" />
+				<property name="parameters" ref="parameters" />
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.SpringTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+		<property name="nestedTransactionAllowed" value="true" />
+		<property name="globalRollbackOnParticipationFailure" value="false" />
+		<property name="dataListener" ref="chainedDataListener" />
+	</bean>
+
+	<bean id="statisticsInterceptor" class="com.ibaset.solumina.stat.StatisticsMethodInterceptor">
+		<property name="statistics" ref="statistics" />
+	</bean>
+	
+	<bean id="txProxyTemplate"
+		class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
+		abstract="true">
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="transactionAttributes">
+			<props>
+				<prop key="*">PROPAGATION_REQUIRED</prop>
+			</props>
+		</property>
+		<property name="preInterceptors">
+			<list>
+				<ref bean="statisticsInterceptor"/>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="nestedTxProxyTemplate"
+		class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
+		abstract="true">
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="transactionAttributes">
+			<props>
+				<prop key="*">PROPAGATION_NESTED,-Throwable</prop>
+			</props>
+		</property>
+		<property name="preInterceptors">
+			<list>
+				<ref bean="statisticsInterceptor"/>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="loginDao" parent="baseDao"
+		class="com.ibaset.solumina.sfcore.dao.impl.LoginDaoImpl" />
+-->
+	<bean id="configuration" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.ConfigurationImpl">
+				<property name="configurationDao"
+					ref="configurationDao" />
+				<property name="cfgLibDao" ref="cfgLibDao" />
+				<property name="message" ref="message" />
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="connectionHeartbeat" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.ConnectionHeartbeatImpl">
+				<property name="loginDao" ref="loginDao" />
+			</bean>
+		</property>
+	</bean>
+<!-- 		
+	<bean id="login" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.LoginImpl">
+				<property name="loginDao" ref="loginDao" />
+				<property name="dataSource" ref="dataSource" />
+				<property name="publishPrivsInContext"
+					ref="publishPrivsInContext" />
+				<property name="dataListener" ref="chainedDataListener" />
+				<property name="queryCache" ref="soluminaQueryCache" />
+				<property name="coreDbRelease" value="10.0" />
+			</bean>
+		</property>
+		<property name="transactionAttributes">
+			<props>
+				<prop key="setFlag*">PROPAGATION_REQUIRED</prop>
+				<prop key="setUp*">PROPAGATION_REQUIRES_NEW</prop>
+				<prop key="logout*">PROPAGATION_REQUIRES_NEW</prop>
+				<prop key="*">PROPAGATION_REQUIRED</prop>
+				<prop key="getX">PROPAGATION_NOT_SUPPORTED</prop>
+			</props>
+		</property>
+	</bean>
+
+	<bean id="publishPrivsInContext" class="java.lang.Boolean">
+		<constructor-arg>
+			<value>false</value>
+		</constructor-arg>
+	</bean>
+ -->
+	<bean id="globalConfigurations" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sffnd.application.impl.GlobalConfigurationImpl">
+				<property name="message" ref="message" />
+				<property name="validator" ref="validator" />
+				<property name="globalConfigurationsDao"
+					ref="globalConfigurationsDao" />
+				<property name="uidEntry" ref="uidEntry" />
+			</bean>
+		</property>
+	</bean>
+<!--
+	<bean id="globalConfigurationsDao" parent="baseDao"
+		class="com.ibaset.solumina.sffnd.dao.impl.GlobalConfigurationDaoImpl" />
+ 		
+    <bean id="uidEntry" parent="txProxyTemplate"> 
+        <property name="target">
+        	<bean
+        		class="com.ibaset.solumina.sffnd.application.impl.UidEntryImpl">
+        		<property name="validator" ref="validator" />
+        		<property name="message" ref="message" />
+        		<property name="uidEntryDao" ref="uidEntryDao" />
+        		<property name="globalConfigurationsDao"
+        			ref="globalConfigurationsDao" />
+        	</bean>
+        </property>
+    </bean>
+ 
+    <bean id="uidEntryDao" parent="baseDao" 
+        class="com.ibaset.solumina.sffnd.dao.impl.UidEntryDaoImpl" > 
+    </bean>
+
+	<bean id="validator"
+		class="com.ibaset.common.solumina.ValidatorImpl">
+		<property name="message" ref="message" />
+	</bean>
+	
+	<bean id="lobHandler"
+		class="org.springframework.jdbc.support.lob.DefaultLobHandler" />
+-->
+	<!-- com.ibaset.common.sql beans -->
+
+	<bean id="passThroughProc" parent="txProxyTemplate">
+		<property name="target">
+			<bean class="com.ibaset.common.sql.PassThroughProc">
+				<property name="databaseInformation"
+					ref="databaseInformation" />
+				<property name="lobHandler" ref="lobHandler" />
+				<property name="dataSource" ref="dataSource" />
+				<property name="dataListener" ref="chainedDataListener" />
+				<property name="licenseInfo" ref="licenseInfo" />
+        		<property name="message" ref="message" />
+				<property name="autocommitProcList">
+					<list>
+						<value>SFCORE_CREATE_USER</value>
+						<value>SFCORE_LICENSE_AVAILABLE</value>
+						<value>SFCORE_LOGIN_USER</value>
+						<value>SFCORE_LOGOUT_USER</value>
+						<value>SFCORE_SYNC_LICENSE_TOOL</value>
+						<value>SFDB_GEN_SEQUENCE</value>
+						<value>SFIFC_HTREF_LOCKEDOBJECTS_VIEW</value>
+						<value>SFQA_CA_ITEM_VALID_MODE</value>
+						<value>SFSQA_IDP_CREATE_PRE</value>
+						<value>SFSQA_IDP_DISPLAY</value>
+						<value>SFSQA_IDP_STATE_COMPLETE</value>
+						<value>SFSQA_INT_SET_STATUS_FLAG</value>
+						<value>SFSQA_PART_DRAWING_RELA_CREATE</value>
+					</list>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="passThroughQuery" parent="txProxyTemplate">
+		<property name="target">
+			<bean class="com.ibaset.common.sql.PassThroughQuery">
+				<property name="databaseInformation"
+					ref="databaseInformation" />
+				<property name="lobHandler" ref="lobHandler" />
+				<property name="dataSource" ref="dataSource" />
+				<property name="dataListener" ref="chainedDataListener" />
+				<property name="queryCache" ref="soluminaQueryCache" />
+			</bean>
+		</property>
+		<property name="transactionAttributes">
+			<props>
+				<prop key="*">PROPAGATION_SUPPORTS</prop>
+			</props>
+		</property>
+	</bean>
+
+	<bean id="userRolePrivilege" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.UserImpl">
+				<property name="privilegeDao" ref="privilegeDao" />
+				<property name="globalParameters" ref="parameters" />
+				<property name="passwordEncoder" ref="passwordEncoder" />
+				<property name="saltSource" ref="saltSource" />
+				<property name="message" ref="message" />
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="privilegeDao" parent="baseDao" 
+		class="com.ibaset.solumina.sfcore.dao.impl.UserRolePrivDaoImpl">
+		<property name="globalParameters" ref="parameters" />
+	</bean>
+
+	<bean id="configurationDao" parent="baseDao"
+		class="com.ibaset.solumina.sfcore.dao.impl.ConfigurationDaoImpl" />
+<!--
+	<bean id="messageDao" parent="baseDao"
+		class="com.ibaset.solumina.sfcore.dao.impl.MessageDaoImpl" />
+-->
+	<bean id="extensionDaoSupport" parent="txProxyTemplate">
+		<property name="target">
+			<bean parent="baseDao"
+				class="com.ibaset.common.dao.ExtensionDaoSupportImpl">
+				<property name="soluminaSequence"
+					ref="soluminaExtensionSequence" />
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="licenseCompatibilityCheck"
+		class="com.ibaset.solumina.sfcore.application.impl.LicenseCompatibilityCheck" />
+ 	
+	<bean id="license" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.LicenseImpl">
+				<property name="ltaEnabled" ref="ltaEnabled" />
+				<property name="xmlEnabled" ref="xmlEnabled" />
+				<property name="dataSource" ref="dataSource" />
+				<property name="databaseInformation"
+					ref="databaseInformation" />
+				<property name="dataListener" ref="chainedDataListener" />
+				<property name="queryCache" ref="soluminaQueryCache" />
+				<property name="namedUserService" ref="namedUserService" />
+				<property name="licenseCompatibilityCheck" ref="licenseCompatibilityCheck" />
+			</bean>
+		</property>
+	</bean>
+<!-- 	
+ 	<bean id="errorLog" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.ErrorLogImpl">
+				<property name="dataSource" ref="dataSource" />
+				<property name="databaseInformation"
+					ref="databaseInformation" />
+				<property name="dataListener" ref="chainedDataListener" />
+				<property name="lobHandler" ref="lobHandler" />
+			</bean>
+		</property>
+		<property name="transactionAttributes">
+			<props>
+				<prop key="log*">PROPAGATION_REQUIRES_NEW</prop>
+			</props>
+		</property>
+	</bean>
+ -->	 
+	<bean id="ltaEnabled" class="java.lang.Boolean">
+		<constructor-arg value="false" />
+	</bean>
+
+	<bean id="xmlEnabled" class="java.lang.Boolean">
+		<constructor-arg value="false" />
+	</bean>
+ 	
+	<bean id="bookmark"
+		class="com.ibaset.solumina.sfcore.application.impl.BookmarkImpl" />
+<!-- 	
+	<bean id="processLog" parent="txProxyTemplate">
+		<property name="target">
+			<bean class="com.ibaset.solumina.sfcore.application.impl.ProcessLogImpl">
+			</bean>
+		</property>
+		<property name="transactionAttributes">
+			<props>
+				<prop key="*">PROPAGATION_REQUIRES_NEW</prop>
+			</props>
+		</property>
+	</bean>
+ 
+	<bean id="asyncTransactionDelay" class="java.lang.Long">
+		<constructor-arg value="5000" />
+	</bean>
+ 	
+	<bean id="asyncTransactionService" class="com.ibaset.common.concurrent.AsynchronousTransactionServiceImpl" destroy-method="cleanUp">
+		<property name="poolSize" value="10" />
+		<property name="login" ref="login" />
+		<property name="errorLog" ref="errorLog" />
+		<property name="processLog" ref="processLog" />
+		<property name="delay" ref="asyncTransactionDelay" />
+		<property name="asyncTransactionBoundary" ref="asyncTransactionBoundary" />
+		<property name="queryCacheFactory" ref="soluminaTransactionQueryCacheFactory" />
+	</bean>
+ -->
+	<bean id="soluminaClusterConfig" class="java.lang.String">
+		<constructor-arg type="java.lang.String">
+			<value type="java.lang.String">
+				UDP(mcast_addr={0};mcast_port={1};ip_ttl=1;
+				mcast_send_buf_size=50000;mcast_recv_buf_size=50000):
+    			PING():
+    			MERGE2(min_interval=5000;max_interval=10000):
+    			FD_SOCK:VERIFY_SUSPECT(timeout=1500):
+    			pbcast.NAKACK(gc_lag=50;retransmit_timeout=300,600,1200,2400,4800):
+    			UNICAST(timeout=300,600,1200,2400):
+    			pbcast.STABLE(desired_avg_gossip=20000):
+    			FRAG2(frag_size=8192):
+    			pbcast.GMS(join_timeout=5000;print_local_addr=true)				
+			</value>
+		</constructor-arg>
+	</bean>
+	<bean id="soluminaCluster" class="com.ibaset.common.solumina.SoluminaCluster" destroy-method="cleanUp">
+		<property name="channelConfig" ref="soluminaClusterConfig" />
+		<property name="globalConfiguration" ref="globalConfigurations" />
+	</bean>
+<!-- 
+	<bean id="serviceDefinitionDao"
+		class="com.ibaset.solumina.sfbis.dao.impl.ServiceDefinitionDaoImpl" />
+	
+	<bean id="multiMediaObjectDao" parent="baseDao"
+		class="com.ibaset.solumina.sfcore.dao.impl.MultiMediaObjectDaoImpl" />
+ -->		
+	<bean id="bootLibDao" parent="baseDao"
+		class="com.ibaset.solumina.sfcore.dao.impl.BootLibDaoImpl" />
+		
+	<bean id="bootLib" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.BootLibImpl">
+				<property name="validator" ref="validator" />
+				<property name="bootLibDao" ref="bootLibDao" />
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="messageSource"
+		class="org.springframework.context.support.ResourceBundleMessageSource">
+		<property name="basenames">
+			<list>
+				<value>validator</value>
+				<value>captions</value>
+			</list>
+		</property>
+	</bean>
+	
+	<bean id="languageUtils" class="com.ibaset.common.util.LanguageUtils">
+		<property name="messageSource" ref ="messageSource" />
+	</bean>
+<!--     
+    <bean id="oagiUtils"
+        class="com.ibaset.common.util.OAGIUtils">
+    </bean>
+ -->	 
+
+	<bean id="cfgLibDao" parent="baseDao"
+		class="com.ibaset.solumina.sfcore.dao.impl.CfgLibDaoImpl" />
+
+	<bean id="sqlLib" class="com.ibaset.solumina.sfcore.application.impl.SqlLibImpl">
+		<property name="configurationDao" ref="configurationDao" />
+		<property name="daoSupport" ref="configurationDao" />
+	</bean>
+	
+	<bean id="soluminaLifecycle" class="com.ibaset.common.solumina.SoluminaLifecycleImpl"	destroy-method="shutdown" />
+	
+	<bean id="mtNodeDao" parent="baseDao" 
+  		class="com.ibaset.solumina.sfcore.dao.impl.MTNodeDaoImpl" /> 
+	
+	<bean id="mtNode" parent="txProxyTemplate">
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sfcore.application.impl.MTNodeImpl">
+				<property name="mtNodeDao" ref="mtNodeDao" />
+				<property name="inactiveNodeTimeout" value="360000" />
+				<property name="globalConfigurationDao" ref="globalConfigurationsDao" />
+			</bean>
+		</property>
+	</bean>
+	
+	<bean id="soluminaInfo" class="com.ibaset.common.solumina.SoluminaInfoImpl">
+	    <property name="mtNode" ref="mtNode" />
+	    <property name="dbVersionDao" ref="ibaReleaseVersionDao" />
+	</bean>
+<!-- 
+	<bean id="queryTimeLogger"
+		class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="transactionAttributes">
+			<props>
+				<prop key="*">PROPAGATION_REQUIRES_NEW</prop>
+			</props>
+		</property>
+		<property name="target">
+			<bean
+				class="com.ibaset.solumina.sffnd.application.impl.QueryTimeLoggerImpl">
+				 <property name="queryTimeLoggerDao" ref="queryTimeLoggerDao" />
+				 <property name="soluminaSequence" ref="soluminaSequence" /> 
+				 <property name="minThresholdAllowed" value="100" />
+				 <property name="asyncTransactionService" ref="asyncTransactionService"/>
+			</bean>
+		</property>
+	</bean>
+ 	 
+	  
+	<bean id="queryTimeLoggerDao" parent="baseDao"
+		class="com.ibaset.solumina.sffnd.dao.impl.QueryTimeLoggerDaoImpl">
+	</bean>
+	
+	<bean id="soluminaExtensionConfiguration" class="com.ibaset.common.util.JsonConfiguration">
+		<constructor-arg value="soluminaExtension.json" />
+	</bean>
+		
+	<beans profile="tomcat">
+		<bean id="nativeJdbcExtractor"
+			class="org.springframework.jdbc.support.nativejdbc.CommonsDbcpNativeJdbcExtractor" />
+	</beans>
+
+	<beans profile="nonTomcat">
+		<bean id="nativeJdbcExtractor"
+			class="org.springframework.jdbc.support.nativejdbc.C3P0NativeJdbcExtractor" />
+	</beans>
+-->
+
+</beans>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Proprietary and Confidential
+    Copyright 1995-2010 iBASEt, Inc.
+    Unpublished-rights reserved under the Copyright Laws of the United States
+    US Government Procurements:
+    Commercial Software licensed with Restricted Rights.
+    Use, reproduction, or disclosure is subject to restrictions set forth in
+    license agreement and purchase contract.
+    iBASEt, Inc. 27442 Portola Parkway, Suite 300, Foothill Ranch, CA 92610
+
+    Solumina software may be subject to United States Dept of Commerce Export Controls.
+    Contact iBASEt for specific Expert Control Classification information.
+
+-->
+ <beans xmlns="http://www.springframework.org/schema/beans"
+ 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd"
+ 	default-lazy-init="true" default-dependency-check="none"
+ 	default-autowire="no">
+ 		
+	<bean id="miDatabaseInformation"
+		class="com.ibaset.common.sql.DatabaseInformationHolder">
+		<property name="databaseProductName" value="oracle"/>
+		<property name="dualTable">
+			<value>from dual </value>
+		</property>
+		<property name="schemaPrefix">
+			<value>${miSchema}.</value>
+		</property>
+		<property name="nvlString">
+			<value>NVL</value>
+		</property>
+	</bean>
+
+</beans>
